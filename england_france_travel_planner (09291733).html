@@ -1,0 +1,495 @@
+<!DOCTYPE html>
+<html lang="zh-TW"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>小資女闖英法！</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/vue/3.4.21/vue.global.prod.min.js"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<style>
+body{background:linear-gradient(160deg,#dbeafe,#e8f1f8 55%,#ede9fe);font-family:-apple-system,"Segoe UI","Noto Sans TC",sans-serif;color:#334155}
+.nb::-webkit-scrollbar{display:none}.nb{scrollbar-width:none}
+.card{background-color:#fff;border-radius:18px;border:1px solid #e2e8f0;padding:12px}
+.inp{width:100%;padding:8px 10px;border-radius:12px;background:#f1f5f9;border:1px solid #e2e8f0;font-size:13px;outline:none}
+.inp:focus{border-color:#38bdf8}
+.btn{background:#0ea5e9;color:#fff;border-radius:12px;padding:8px 14px;font-size:13px;font-weight:600}
+.btn2{background:#e0f2fe;color:#0369a1;border-radius:12px;padding:6px 10px;font-size:12px}
+.modal .inp{padding:6px 9px;font-size:12px;border-radius:10px}
+.chip{padding:6px 12px;border-radius:999px;background:#f1f5f9;color:#64748b;white-space:nowrap;font-size:12px}
+.chip.on{background:#0ea5e9;color:#fff;font-weight:700}
+</style></head>
+<body class="flex justify-center sm:py-4">
+<div id="app" class="w-full max-w-md h-screen sm:h-[880px] sm:max-h-[94vh] sm:rounded-[32px] bg-slate-50 shadow-2xl flex flex-col overflow-hidden relative">
+
+<header class="px-4 pt-4 pb-2 border-b border-slate-100" style="background:linear-gradient(180deg,#e0f2fe,#fff)">
+ <div class="flex justify-between items-center mb-2">
+  <div><div class="text-lg font-bold cursor-pointer" @click="view='home'">✈️ 小資女闖英法！</div><div class="text-[11px] text-slate-400">南法 ・ 巴黎 ・ 倫敦</div></div>
+  <div class="flex gap-1.5">
+   <button class="w-8 h-8 rounded-full text-sm" :class="view=='flight'?'bg-sky-500 text-white':'bg-sky-100'" @click="view='flight'" title="航班詳情">✈️</button>
+   <button class="w-8 h-8 rounded-full text-sm" :class="view=='trans'?'bg-sky-500 text-white':'bg-sky-100'" @click="view='trans'" title="交通 / 火車">🚆</button>
+   <button class="w-8 h-8 rounded-full text-sm" :class="view=='stay'?'bg-sky-500 text-white':'bg-sky-100'" @click="view='stay'" title="住宿">🏨</button>
+   <button class="w-8 h-8 rounded-full text-sm" :class="view=='tr'?'bg-sky-500 text-white':'bg-sky-100'" @click="view='tr'" title="翻譯">🌐</button>
+   <button class="w-8 h-8 rounded-full text-sm" :class="view=='info'?'bg-sky-500 text-white':'bg-sky-100'" @click="view='info'">ℹ️</button>
+   
+  </div>
+ </div>
+ <div v-if="!(view=='day'&&di>=0&&tab=='bak')&&view!='shop'" class="flex gap-2 overflow-x-auto nb py-1">
+  <button class="chip" :class="view=='home'?'on':''" @click="view='home'">🏠 首頁</button>
+  <button class="chip" :class="view=='day'&&di==-1?'on':''" @click="view='day';di=-1">✅ To Do</button>
+  <button v-for="(d,i) in S.days" class="chip text-center min-w-[70px]" :class="view=='day'&&di==i?'on':''" :style="view=='day'&&di==i?{}:{background:rg(d.city)[0],color:rg(d.city)[1]}" @click="view='day';di=i"><div class="text-[10px] opacity-80">{{dstr(i,1)}}</div>Day {{i+1}}</button>
+ </div>
+</header>
+
+<main class="flex-1 overflow-y-auto p-3 pb-24 nb space-y-3">
+
+<!-- HOME -->
+<section v-if="view=='home'" class="space-y-3">
+ <div class="card flex justify-between items-center" style="background:linear-gradient(90deg,#e0f2fe,#ede9fe)"><div><div class="font-bold">🇫🇷🇬🇧 小資女闖英法！</div><div class="text-xs text-slate-500 mt-1">{{dstr(0,1)}} ～ {{dstr(19,1)}}</div><div class="text-xs text-slate-500 mt-1 flex items-center gap-1">出發日 <input type="date" v-model="S.start" class="inp !w-auto !py-1"></div></div><button class="btn2" @click="toggleAll()">{{allOpen?'全部收合':'全部展開'}}</button></div>
+ <div class="card !p-2">
+  <div v-for="(d,i) in S.days" :key="i" class="border-b border-slate-50">
+   <button class="w-full text-left flex gap-2 items-start py-2 px-1" @click="openD[i]=!openD[i]">
+    <span class="chip !py-0.5 shrink-0 !text-[11px] w-[54px] text-center !px-0 font-bold" :style="{background:rg(d.city)[0],color:rg(d.city)[1]}">Day {{i+1}}</span><span class="text-[11px] text-slate-400 w-14 shrink-0 pt-0.5">{{dstr(i,1)}}</span><span class="text-[13px] flex-1">{{(d.title||d.city||'').trim()}}</span><span class="text-slate-300 text-xs pt-0.5">{{openD[i]?'▲':'▼'}}</span></button>
+   <div v-if="openD[i]" class="pb-2 pl-2 space-y-1">
+    <div v-for="it in d.items" :key="it.id" class="text-xs text-slate-600 flex gap-1"><span class="w-10 text-sky-600 shrink-0">{{it.time}}</span><span>{{EMO[it.cat]}} {{it.place}}</span></div>
+    <div v-if="!d.items.length" class="text-xs text-slate-400">尚無行程</div>
+    <button class="btn2 mt-1" @click="view='day';di=i;tab='plan'">進入這天 →</button></div>
+  </div></div>
+</section>
+
+<!-- FLIGHT / TRANS -->
+<section v-if="view=='flight'||view=='trans'" class="space-y-3">
+ <div class="flex justify-between items-end px-1"><div><div class="text-[11px] tracking-[0.3em] text-slate-400">{{view=='flight'?'FLIGHTS':'TRAINS'}}</div><div class="text-xl font-light text-slate-800">{{view=='flight'?'航班詳情':'交通 / 火車轉乘'}}</div></div><button class="text-xs text-sky-600 pb-1" @click="addTrip()">＋ 新增</button></div>
+ <div v-for="x in trips" :key="x.id" class="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+  <template v-if="!editT[x.id]">
+   <div class="flex justify-between px-4 pt-3 text-[11px] tracking-wider text-slate-400"><span class="uppercase">{{(view=='flight'?[x.airline,x.no]:[x.operator,x.no]).filter(Boolean).join(' ')||(view=='flight'?'FLIGHT':'TRAIN')}}</span><span>Day {{x.day}} · {{dd(x.day)}}</span></div>
+   <div class="flex items-center px-4 py-3 gap-2">
+    <div class="min-w-0 flex-1 "><div :class="view=='flight'?'text-3xl tracking-wider':'text-[15px] leading-snug'" class="font-light text-slate-800 break-words">{{x.from||(view=='flight'?'---':'出發地')}}</div><div class="text-sm text-sky-700 mt-1">{{x.dep||'--:--'}}</div></div>
+    <div class="w-20 shrink-0 text-center"><div class="text-[11px] text-slate-400 mb-0.5">{{x.dur||'—'}}</div><div class="flex items-center text-slate-300 text-xs"><span class="flex-1 border-t border-dashed border-slate-300"></span><span class="mx-1">{{view=='flight'?'✈':'🚆'}}</span><span class="flex-1 border-t border-dashed border-slate-300"></span></div></div>
+    <div class="min-w-0 flex-1 text-right"><div :class="view=='flight'?'text-3xl tracking-wider':'text-[15px] leading-snug'" class="font-light text-slate-800 break-words">{{x.to||(view=='flight'?'---':'抵達地')}}</div><div class="text-sm text-sky-700 mt-1">{{x.arr||'--:--'}}</div></div>
+   </div>
+   <div class="px-4 pb-3 flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-slate-500">
+    <span v-if="view=='flight'&&(x.tfrom||x.tto)">航廈 {{x.tfrom||'-'}} → {{x.tto||'-'}}</span><span v-if="x.cost">費用 {{x.cost}}</span><span v-if="x.ref">訂位 {{x.ref}}</span><span v-if="x.text">{{x.text}}</span><span v-if="x.note">{{x.note}}</span></div>
+   <div class="flex justify-between items-center border-t border-dashed border-slate-200 px-4 py-2 text-xs">
+    <span class="space-x-3"><a v-if="view=='flight'" :href="fltUrl(x)" target="_blank" class="text-slate-400">航班動態 ↗</a><template v-else><a :href="trainUrl(x)" target="_blank" class="text-slate-400">車次動態 ↗</a><a :href="opUrl(x)" target="_blank" class="text-slate-400">官網 / 訂票 ↗</a></template></span>
+    <button class="text-sky-600" @click="editT[x.id]=true">編輯</button></div>
+  </template>
+  <div v-else class="p-3 space-y-1">
+   <div class="flex gap-1 items-center"><span class="text-[11px] text-slate-400">D</span><input type="number" v-model.number="x.day" class="inp !w-12 !px-1 text-center"><span class="text-[11px] text-sky-600 w-16 shrink-0">{{dd(x.day)}}</span><input v-model="x.text" class="inp" placeholder="標題 / 備註"></div>
+   <template v-if="view=='flight'">
+    <div class="flex gap-1"><input v-model="x.airline" class="inp" placeholder="航空公司"><input v-model="x.no" class="inp uppercase" placeholder="航班號 (如 TK25)"></div>
+    <div class="flex gap-1 items-center"><input v-model="x.from" class="inp text-center uppercase" maxlength="3" placeholder="出發 TPE"><span>→</span><input v-model="x.to" class="inp text-center uppercase" maxlength="3" placeholder="抵達 IST"></div>
+    <div class="flex gap-1 items-center"><label class="text-[11px] text-slate-400 shrink-0">起飛</label><input :value="x.dep" @input="x.dep=tf($event)" inputmode="numeric" maxlength="5" placeholder="HH:MM" class="inp text-center"><label class="text-[11px] text-slate-400 shrink-0">抵達</label><input :value="x.arr" @input="x.arr=tf($event)" inputmode="numeric" maxlength="5" placeholder="HH:MM" class="inp text-center"></div>
+    <div class="flex gap-1"><input v-model="x.dur" class="inp" placeholder="航程時間"><input v-model="x.tfrom" class="inp" placeholder="出發航廈"><input v-model="x.tto" class="inp" placeholder="抵達航廈"></div>
+    <div class="flex gap-1.5 items-center flex-wrap"><button class="btn2" @click="lookup(x,true)">🔍 查詢航班</button><span class="text-[11px] text-slate-400">{{x.msg}}</span></div>
+   </template>
+   <template v-else>
+    <div class="flex gap-1 items-center"><input v-model="x.from" class="inp" placeholder="出發地"><span>→</span><input v-model="x.to" class="inp" placeholder="抵達地"></div>
+    <div class="flex gap-1"><input v-model="x.operator" class="inp" placeholder="營運公司 (SNCF / Eurostar)"><input v-model="x.no" class="inp" placeholder="車次 / 車號"></div>
+    <div class="flex gap-1 items-center"><label class="text-[11px] text-slate-400 shrink-0">出發</label><input :value="x.dep" @input="x.dep=tf($event)" inputmode="numeric" maxlength="5" placeholder="HH:MM" class="inp text-center"><label class="text-[11px] text-slate-400 shrink-0">抵達</label><input :value="x.arr" @input="x.arr=tf($event)" inputmode="numeric" maxlength="5" placeholder="HH:MM" class="inp text-center"></div>
+    <div class="flex gap-1 items-center"><input v-model="x.dur" class="inp" :placeholder="'乘車時間 '+calc(x)"><button class="btn2 shrink-0" @click="x.dur=calc(x)">試算</button></div>
+    <input v-model="x.cost" class="inp" placeholder="費用 (如 €89 / NT$3,000)">
+   </template>
+   <input v-model="x.ref" class="inp" placeholder="訂位代號 / 座位">
+   <input v-model="x.note" class="inp" placeholder="備註 (月台、轉乘方式、備選車次…)">
+   <div class="flex justify-between items-center pt-1"><button class="text-xs text-rose-400" @click="del(trips,x.id)">刪除</button><button class="btn2" @click="editT[x.id]=false">完成</button></div></div>
+ </div>
+ <div v-if="!trips.length" class="text-sm text-slate-400 text-center py-6">還沒有資料，按右上「＋ 新增」</div>
+ <div v-if="view=='flight'" class="text-[11px] text-slate-500 space-y-1 px-1"><div>自動查航廈與航程時間需要 AeroDataBox (RapidAPI) 金鑰。填入後，只要有航班號和第幾天，就會自動查詢並填入。沒有金鑰時，可點卡片上的「航班動態」。</div><input v-model="S.apiKey" class="inp" placeholder="RapidAPI Key (選填)"></div>
+</section>
+
+<!-- TRANSLATE -->
+<section v-if="view=='tr'" class="space-y-3">
+ <div class="card space-y-2" style="border-top:3px solid #6ee7b7"><b>🌐 翻譯</b>
+  <div class="flex gap-1 items-center"><select v-model="T.from" class="inp"><option v-for="l in LANGS" :value="l[0]">{{l[1]}}</option></select><button class="btn2" @click="swap()">⇄</button><select v-model="T.to" class="inp"><option v-for="l in LANGS" :value="l[0]">{{l[1]}}</option></select></div>
+  <textarea v-model="T.text" class="inp" rows="3" placeholder="輸入要翻譯的文字"></textarea>
+  <button class="btn w-full" @click="doTr()">{{T.busy?'翻譯中…':'翻譯'}}</button>
+  <div v-if="T.out" class="bg-sky-50 rounded-xl p-3 text-base whitespace-pre-line">{{T.out}}
+   <div class="flex gap-1.5 mt-2 flex-wrap"><button class="btn2" @click="speak(T.out,T.to)">🔊 朗讀</button><button class="btn2" @click="copy(T.out)">📋 複製</button></div></div>
+  <div class="text-[11px] text-slate-400">{{T.msg}}</div></div>
+ <div class="card"><b class="text-sm">📖 常用句 (離線可用，中文→英文 / 法文 / 義大利文)</b>
+  <button v-for="p in PH" :key="p[0]" class="w-full text-left py-2 border-b border-slate-50 text-sm" @click="usePh(p)">{{p[0]}}</button>
+  <div v-for="p in S.myPh" :key="p.id" class="flex items-center border-b border-slate-50"><button class="flex-1 text-left py-2 text-sm" @click="usePh([p.zh,p.fr,p.en,p.it])">⭐ {{p.zh}}</button><button class="text-slate-300 px-1" @click="del(S.myPh,p.id)">✕</button></div>
+  <div class="mt-3 pt-3 border-t border-slate-100 space-y-1">
+   <div class="text-xs font-bold text-slate-500">＋ 新增我的常用句</div>
+   <input class="inp !py-1.5 !text-xs" v-model="ph.zh" placeholder="中文句子">
+   <div class="grid grid-cols-3 gap-1"><input class="inp !py-1.5 !text-xs" v-model="ph.en" placeholder="英文 (選填)"><input class="inp !py-1.5 !text-xs" v-model="ph.fr" placeholder="法文 (選填)"><input class="inp !py-1.5 !text-xs" v-model="ph.it" placeholder="義文 (選填)"></div>
+   <div class="text-[11px] text-slate-400">留空的語言會自動翻譯 (需連網)，也可以自己填寫</div>
+   <button class="btn w-full !py-1.5" @click="addMyPh()">{{ph.busy?'翻譯中…':'新增'}}</button></div></div>
+</section>
+
+<!-- STAY -->
+<section v-if="view=='stay'" class="card" style="border-top:3px solid #fcd34d">
+ <div class="flex justify-between items-center mb-3"><b>🏨 住宿</b><button class="btn2" @click="S.lodging.push({id:uid(),name:'',addr:'',phone:'',from:1,to:2,note:''})">＋新增</button></div>
+ <div v-for="l in S.lodging" :key="l.id" class="mb-3 pb-3 border-b border-slate-50 space-y-1">
+  <div class="flex gap-1"><input class="inp font-semibold" v-model="l.name" placeholder="住宿名稱"><button @click="del(S.lodging,l.id)" class="text-slate-300 px-1">✕</button></div>
+  <input class="inp" v-model="l.addr" placeholder="地址">
+  <input class="inp" v-model="l.phone" placeholder="電話 (含國碼，如 +33 1 23 45 67 89)">
+  <input class="inp" v-model="l.web" placeholder="官網網址 (https://…)">
+  <div class="flex gap-1.5 flex-wrap"><a :href="nav(l.addr||l.name)" target="_blank" class="btn2">🗺️ Google Map</a><a v-if="l.web" :href="webUrl(l.web)" target="_blank" class="btn2">🌐 官網</a><button v-if="l.addr" class="btn2" @click="copy(l.addr)">📋 複製地址</button></div>
+  <div class="flex gap-1 items-center text-[11px] text-slate-500">入住 D<input type="number" v-model.number="l.from" class="inp !w-12 !px-1 text-center"> 退房 D<input type="number" v-model.number="l.to" class="inp !w-12 !px-1 text-center"><span>{{dd(l.from)}} → {{dd(l.to)}}</span></div>
+  <input class="inp" v-model="l.note" placeholder="訂房代號 / 備註"></div>
+</section>
+
+<!-- TODO -->
+<section v-if="view=='day'&&di==-1" class="space-y-2">
+ <div class="card !p-2" style="border-top:3px solid #a5b4fc"><div class="flex gap-1">
+  <input class="inp !py-1.5 !text-xs" v-model="f.todo" @keyup.enter="addTodo()" placeholder="新增待辦">
+  <input class="inp !py-1.5 !text-xs" v-model="f.todosub" @keyup.enter="addTodo()" placeholder="細項 (選填)">
+  <button class="btn !px-3 shrink-0" @click="addTodo()">＋</button></div></div>
+ <div class="card !py-1">
+  <div v-for="t in todoSorted" :key="t.id" class="py-1.5 border-b border-slate-50 last:border-0">
+   <div class="flex items-center gap-2"><input type="checkbox" v-model="t.done" class="accent-indigo-500"><span class="flex-1 text-sm" :class="t.done&&'line-through text-slate-400'">{{t.text}}</span><button @click="del(S.todo,t.id)" class="text-slate-300">✕</button></div>
+   <input v-model="t.sub" class="w-full bg-transparent text-xs text-slate-500 outline-none pl-6 mt-0.5" placeholder="＋ 細項備註"></div>
+  <div v-if="!S.todo.length" class="text-sm text-slate-400 text-center py-4">沒有待辦事項</div></div>
+</section>
+
+<!-- DAY -->
+<template v-if="view=='day'&&di>=0&&tab!='bak'">
+ <div v-if="tab=='exp'" class="text-xs font-bold text-slate-500 px-1">Day {{di+1}} ・ {{dstr(di)}}</div>
+ <div v-if="tab=='plan'" :style="{background:'linear-gradient(90deg,'+rg(day.city)[0]+',#fff)'}" class="card flex justify-between items-center">
+  <div><span class="text-[11px] bg-sky-500 text-white rounded-md px-2 py-0.5">Day {{di+1}}</span> <span class="text-xs text-slate-500">{{dstr(di)}}</span>
+   <div class="text-xs mt-1">📍 <input v-model="day.city" class="bg-transparent border-b border-dashed border-slate-300 w-28 outline-none" placeholder="城市(英文)"></div>
+   <div class="text-[13px] font-bold mt-1"><input v-model="day.title" class="bg-transparent outline-none w-44" placeholder="今日主題"></div></div>
+  <div class="text-right"><div class="text-3xl leading-none">{{wx.icon}}</div><div class="text-base font-bold mt-1">{{wx.t}}</div><div class="text-[11px] text-slate-600">{{wx.f}}</div><div class="text-[10px] text-slate-400 max-w-[140px]">{{wx.d}}</div></div>
+ </div>
+
+ <div v-if="(tab=='plan'||tab=='map')&&(dayFlights.length||dayTrans.length||dayLodging)" class="card text-xs space-y-1 !py-2">
+  <div v-for="x in dayFlights" :key="x.id">✈️ {{[x.airline,x.no].filter(Boolean).join(' ')}} {{x.from&&x.to?x.from+'→'+x.to:x.text}} {{x.dep}}{{x.arr?'–'+x.arr:''}} <span v-if="x.ref" class="text-slate-400">({{x.ref}})</span></div>
+  <div v-for="x in dayTrans" :key="x.id">🚆 {{x.from&&x.to?x.from+' → '+x.to:x.text}} {{[x.operator,x.no].filter(Boolean).join(' ')}} {{x.dep}}{{x.arr?'–'+x.arr:''}} {{x.cost?'💰'+x.cost:''}} <span v-if="x.ref" class="text-slate-400">({{x.ref}})</span></div>
+  <div v-if="dayLodging">🏨 今晚住宿：<b>{{dayLodging.name||'(未填)'}}</b></div></div>
+
+ <!-- plan -->
+ <template v-if="tab=='plan'">
+  <div class="flex justify-between items-center"><span class="text-xs font-bold text-slate-400">行程 ({{day.items.length}}) ・ 可拖曳排序</span><button class="btn" @click="openItem()">＋ 新增</button></div>
+  <div v-if="!day.items.length" class="text-center text-sm text-slate-400 py-10">今天還沒有行程</div>
+  <template v-for="(it,i) in day.items" :key="it.id"><div class="card flex gap-2 items-start" :style="{borderLeft:'4px solid '+cc(it.cat)[2]}" draggable="true"
+   @dragstart="drag=i" @dragover.prevent @drop="drop(i)">
+   <div class="text-slate-300 cursor-grab select-none pt-1">⋮⋮</div>
+   <div class="flex-1 min-w-0">
+    <div class="flex items-center gap-2 text-xs"><b class="text-sky-600">{{it.time||'--:--'}}</b><span class="chip !py-0.5" :style="{background:cc(it.cat)[0],color:cc(it.cat)[1]}">{{EMO[it.cat]}} {{it.cat=='其他'&&it.catx?it.catx:it.cat}}</span></div>
+    <div class="font-semibold text-sm mt-1">{{it.place}}</div>
+    <div v-if="it.q" class="text-xs text-slate-400">{{it.q}}</div>
+    <div v-if="it.addr" class="text-xs text-slate-500 mt-1">📍 {{it.addr}}</div>
+    <div v-if="it.hours" class="text-xs text-slate-500 mt-1">🕒 {{it.hours}}</div>
+    <div v-if="it.ticket" class="text-xs text-slate-500 mt-1">🎫 {{it.ticket}}</div>
+    <div v-if="it.intro" class="text-xs text-slate-500 mt-1 whitespace-pre-line">ℹ️ {{it.intro}}</div>
+    <div v-if="it.tnote" class="text-xs text-slate-500 mt-1 whitespace-pre-line">🚇 {{it.tnote}}</div>
+    <div v-if="it.note" class="text-xs text-slate-500 mt-1 whitespace-pre-line">📝 {{it.note}}</div>
+    <div class="flex gap-1.5 mt-2 flex-wrap"><a :href="nav(qf(it))" target="_blank" class="btn2">🗺️ Google Map</a><button v-if="it.addr" class="btn2" @click="copy(it.addr)">📋 複製地址</button></div></div>
+   <div class="flex flex-col gap-1 text-xs text-slate-400">
+    <button @click="mv(i,-1)">▲</button><button @click="mv(i,1)">▼</button>
+    <button @click="openItem(it)">✏️</button><button @click="del(day.items,it.id)">🗑️</button></div>
+  </div>
+  <div v-if="i<day.items.length-1" class="flex justify-center items-center gap-2 flex-wrap text-[11px] text-slate-500 py-0.5">
+   <span class="text-slate-300">┊</span>
+   <span v-if="leg(i)&&leg(i).far">距離較遠 (約 {{leg(i).km}} km)，請看交通 / 航班</span>
+   <template v-else-if="leg(i)"><span :class="leg(i).best=='walk'&&'font-bold text-sky-600'">🚶 {{leg(i).walk}}</span><span :class="leg(i).best=='transit'&&'font-bold text-sky-600'">🚌 {{leg(i).transit}} (估)</span><span>🚗 {{leg(i).drive}}</span></template>
+   <span v-else class="text-slate-300">{{legBusy?'計算交通時間中…':'交通時間待計算'}}</span>
+   <a :href="dirUrl(i)" target="_blank" class="text-sky-500">路線</a><span class="text-slate-300">┊</span></div></template>
+ </template>
+
+ <!-- map -->
+ <template v-if="tab=='map'">
+  <div class="flex gap-2"><a :href="routeUrl()" target="_blank" class="btn flex-1 text-center">🗺️ 整天路線 (Google Map)</a><button class="btn2" @click="locate()">📍 我在哪</button></div>
+  <div id="map" class="rounded-2xl overflow-hidden border border-slate-200" style="height:380px"></div>
+  <div class="text-[11px] text-slate-400">{{mapMsg}}</div>
+  <div v-for="it in day.items" class="card flex justify-between items-center text-sm"><span>{{EMO[it.cat]}} {{it.time}} {{it.place}}</span><a :href="nav(qf(it))" target="_blank" class="btn2">Google Map</a></div>
+ </template>
+
+ <!-- expense -->
+ <template v-if="tab=='exp'">
+  <div class="card" style="background:#ecfdf5;border-color:#a7f3d0">
+   <div class="text-xs text-slate-500">今日支出 (折合台幣)</div><div class="text-2xl font-bold text-sky-700">NT$ {{fmt(dayTotal(day))}}</div>
+   <div class="text-xs text-slate-500 mt-1">全程累計 NT$ {{fmt(S.days.reduce((a,d)=>a+dayTotal(d),0))}}</div></div>
+  <div class="card space-y-2">
+   <div class="font-bold text-sm">💱 匯率換算 <span class="text-[11px] font-normal text-slate-400">{{rateMsg}}</span></div>
+   <div class="flex gap-2 items-center text-xs">1 EUR = <input type="number" v-model.number="S.rate.EUR" class="inp !w-20"> TWD ｜ 1 GBP = <input type="number" v-model.number="S.rate.GBP" class="inp !w-20"></div>
+   <div class="flex gap-2 items-center"><input type="number" v-model.number="f.cv" class="inp" placeholder="外幣金額"><select v-model="f.cvc" class="inp !w-24"><option>EUR</option><option>GBP</option></select></div>
+   <div class="text-sm">≈ <b class="text-sky-700">NT$ {{fmt((f.cv||0)*S.rate[f.cvc])}}</b></div></div>
+  <div class="card space-y-2">
+   <div class="flex gap-2"><input class="inp" v-model="f.et" placeholder="品名 / 說明"><input type="number" class="inp !w-24" v-model.number="f.ea" placeholder="金額"><select v-model="f.ec" class="inp !w-20"><option>TWD</option><option>EUR</option><option>GBP</option></select></div>
+   <div class="grid grid-cols-3 gap-1"><select :value="f.ep" @change="f.ep=$event.target.value;selOpt('payer','ep')" class="inp !px-1 !text-xs"><option value="">付款人</option><option v-for="o in S.opts.payer" :key="o">{{o}}</option><option value="__add">＋ 新增…</option><option value="__del">－ 移除…</option></select><select :value="f.em" @change="f.em=$event.target.value;selOpt('method','em')" class="inp !px-1 !text-xs"><option value="">支付方式</option><option v-for="o in S.opts.method" :key="o">{{o}}</option><option value="__add">＋ 新增…</option><option value="__del">－ 移除…</option></select><select :value="f.ek" @change="f.ek=$event.target.value;selOpt('cat','ek')" class="inp !px-1 !text-xs"><option value="">項目</option><option v-for="o in S.opts.cat" :key="o">{{o}}</option><option value="__add">＋ 新增…</option><option value="__del">－ 移除…</option></select></div>
+   <button class="btn w-full" @click="addExp()">記一筆</button></div>
+  <div v-for="e in day.exp" :key="e.id" class="card flex justify-between items-center text-sm">
+   <span class="min-w-0">{{e.title}}<div class="flex gap-1 flex-wrap mt-1"><span v-if="e.cat" class="chip !py-0.5 !text-[11px]">🏷️ {{e.cat}}</span><span v-if="e.payer" class="chip !py-0.5 !text-[11px]">👤 {{e.payer}}</span><span v-if="e.method" class="chip !py-0.5 !text-[11px]">💳 {{e.method}}</span></div></span><span><b>{{e.cur}} {{fmt(e.amt)}}</b><span v-if="e.cur!='TWD'" class="text-xs text-slate-400"> ≈ NT${{fmt(e.amt*S.rate[e.cur])}}</span> <button class="text-slate-300 ml-2" @click="del(day.exp,e.id)">✕</button></span></div>
+  <div class="card">
+   <div class="font-bold text-sm mb-2">📊 分天統計</div>
+   <div v-for="(d,i) in S.days" v-show="d.exp.length" class="flex justify-between text-xs py-1 border-b border-slate-50"><span>Day {{i+1}} {{dstr(i,1)}}</span><span>NT$ {{fmt(dayTotal(d))}}</span></div>
+   <div class="flex justify-between text-sm font-bold pt-2"><span>總計</span><span>NT$ {{fmt(S.days.reduce((a,d)=>a+dayTotal(d),0))}}</span></div></div>
+  <div v-for="g in GRP" :key="g[0]" class="card">
+   <div class="font-bold text-sm mb-2">{{g[1]}}統計 (全程，折合台幣)</div>
+   <div v-for="v in vals(g[0])" :key="v" class="flex justify-between text-sm py-1 border-b border-slate-50"><span>{{v}}</span><span>NT$ {{fmt(statTotal(g[0],v))}}</span></div>
+   <div v-if="!vals(g[0]).length" class="text-xs text-slate-400">尚無資料</div></div>
+ </template>
+
+
+</template>
+
+<!-- BACKUP + SHOP -->
+<section v-if="view=='shop'||(view=='day'&&di>=0&&tab=='bak')" class="space-y-3">
+ <div class="card space-y-2" style="border-top:3px solid #fcd34d"><div class="font-bold text-sm">🌟 備用景點</div>
+  <div class="flex gap-1"><input class="inp" v-model="f.bak" @keyup.enter="addBak()" placeholder="中文名稱"><input class="inp" v-model="f.bakq" @keyup.enter="addBak()" placeholder="外文名稱 (Google 地圖)"></div>
+  <button class="btn w-full" @click="addBak()">新增備用景點</button></div>
+ <div v-for="b in S.backup" :key="b.id" class="card text-sm">
+  <div class="flex justify-between items-center gap-1"><button class="flex-1 text-left font-semibold min-w-0" @click="openB[b.id]=!openB[b.id]">{{openB[b.id]?'▼':'▶'}} {{b.text}}<span v-if="b.q" class="block text-xs font-normal text-slate-400">{{b.q}}</span></button>
+   <span class="flex gap-1 shrink-0"><a :href="nav(b.q||b.addr||b.text)" target="_blank" class="btn2">Google Map</a><button v-if="view=='day'" class="btn2" @click="toDay(b)">加入今日</button><button class="text-slate-300 px-1" @click="del(S.backup,b.id)">✕</button></span></div>
+  <div v-if="!openB[b.id]&&(b.city||b.hours||b.price)" class="text-xs text-slate-500 mt-1">{{[b.city,b.hours,b.price].filter(Boolean).join(' ・ ')}}</div>
+  <div v-if="openB[b.id]" class="mt-2 space-y-1">
+   <input v-model="b.text" class="inp" placeholder="中文名稱"><input v-model="b.q" class="inp" placeholder="外文名稱">
+   <input v-model="b.city" class="inp" placeholder="城市 / 區域">
+   <div class="flex gap-1"><input v-model="b.addr" class="inp" placeholder="地址"><button v-if="b.addr" class="btn2 shrink-0" @click="copy(b.addr)">📋</button></div>
+   <input v-model="b.hours" class="inp" placeholder="開放時間"><input v-model="b.price" class="inp" placeholder="門票 / 預估費用">
+   <textarea v-model="b.intro" class="inp" rows="2" placeholder="景點介紹"></textarea>
+   <textarea v-model="b.note" class="inp" rows="2" placeholder="備註 (預約、交通…)"></textarea></div></div>
+ <div v-if="!S.backup.length" class="text-center text-xs text-slate-400">還沒有備用景點</div>
+ <div class="card" style="border-top:3px solid #fda4af"><div class="font-bold text-sm mb-2">🛍️ 購物清單</div>
+  <div v-for="t in S.shop" :key="t.id" class="flex items-center gap-2 py-1.5 border-b border-slate-50">
+   <input type="checkbox" v-model="t.done" class="accent-sky-500"><span class="flex-1 text-sm" :class="t.done&&'line-through text-slate-400'">{{t.text}}</span><button @click="del(S.shop,t.id)" class="text-slate-300">✕</button></div>
+  <div class="flex gap-2 mt-3"><input class="inp" v-model="f.shop" @keyup.enter="add(S.shop,'shop')" placeholder="想買的東西"><button class="btn" @click="add(S.shop,'shop')">新增</button></div></div>
+</section>
+
+<!-- INFO -->
+<section v-if="view=='info'" class="space-y-3">
+ <div v-for="(c,k) in INFO" :key="c" class="card" :style="{borderTop:'3px solid '+INFOC[k]}"><div class="font-bold text-sm mb-1 text-sky-700">{{c}}</div>
+  <div v-for="x in S.info.filter(x=>x.cat==c)" :key="x.id" class="flex justify-between text-sm py-1 border-b border-slate-50"><span class="whitespace-pre-line">{{x.text}}</span><button @click="del(S.info,x.id)" class="text-slate-300">✕</button></div></div>
+ <div class="card flex gap-2"><select v-model="f.ic" class="inp !w-28"><option v-for="c in INFO">{{c}}</option></select><input class="inp" v-model="f.info" @keyup.enter="addInfo()" placeholder="新增資訊"><button class="btn" @click="addInfo()">新增</button></div>
+</section>
+</main>
+
+<!-- bottom nav -->
+<nav v-if="view=='day'&&di>=0" class="absolute bottom-0 inset-x-0 bg-white/95 border-t border-slate-100 grid grid-cols-4 text-center text-[11px] pb-3 pt-2">
+ <button v-for="t in TABS" @click="tab=t[0]" :class="tab==t[0]?'text-sky-600 font-bold':'text-slate-400'"><div class="text-lg">{{t[2]}}</div>{{t[1]}}</button>
+</nav>
+
+
+<div v-if="toast" class="absolute top-20 left-1/2 -translate-x-1/2 bg-slate-800 text-white text-xs px-3 py-1.5 rounded-full z-50">{{toast}}</div>
+<!-- modal -->
+<div v-if="modal" class="absolute inset-0 bg-slate-900/40 flex items-end z-30" @click.self="modal=false">
+ <div class="modal bg-white w-full rounded-t-3xl p-4 space-y-1.5 max-h-[88%] overflow-y-auto">
+  <div class="font-bold">{{form.id?'編輯行程':'新增行程'}}</div>
+  <div class="flex gap-1 items-center"><input :value="form.time" @input="form.time=tf($event)" inputmode="numeric" maxlength="5" placeholder="HH:MM" class="inp text-center !w-[74px] shrink-0"><select :value="(form.time||'').slice(0,2)" @change="setT(0,$event.target.value)" class="inp !w-auto !px-1"><option value="">時</option><option v-for="h in HRS" :key="h">{{h}}</option></select><span>:</span><select :value="(form.time||'').slice(3,5)" @change="setT(1,$event.target.value)" class="inp !w-auto !px-1"><option value="">分</option><option v-for="m in MINS" :key="m">{{m}}</option></select><select v-model="form.cat" class="inp !w-auto flex-1 min-w-0"><option v-for="c in CATS">{{c}}</option></select></div>
+  <input v-if="form.cat=='其他'" v-model="form.catx" class="inp" placeholder="輸入項目內容 (如 住宿、辦事)">
+  <div class="flex gap-1"><input v-model="form.place" class="inp" placeholder="中文地名"><input v-model="form.q" class="inp" placeholder="外文地名 (Google 地圖搜尋)"></div>
+  <input v-model="form.addr" class="inp" placeholder="地址 (可一鍵複製 / 展示給司機看)">
+  <input v-model="form.gmap" class="inp" placeholder="Google 地圖自訂搜尋文字或連結 (選填，留空則用外文地名)">
+  <input v-model="form.tnote" class="inp" placeholder="交通備註 (如 搭 M1 到 Concorde 站，步行 5 分)">
+  <div class="flex gap-1"><input v-model="form.hours" class="inp" placeholder="開放時間"><input v-model="form.ticket" class="inp" placeholder="門票 (價格 / 已訂)"></div>
+  <textarea v-model="form.intro" class="inp" rows="2" placeholder="景點介紹"></textarea>
+  <textarea v-model="form.note" class="inp" rows="2" placeholder="備註 (訂位代號、票價…)"></textarea>
+  <div class="flex gap-2"><button class="btn2 flex-1" @click="modal=false">取消</button><button class="btn flex-1" @click="saveItem()">儲存</button></div>
+ </div></div>
+</div>
+
+<script>
+const {createApp,reactive,ref,computed,watch,nextTick,onMounted}=Vue;
+const HRS=Array.from({length:24},(_,i)=>String(i).padStart(2,'0')),MINS=Array.from({length:60},(_,i)=>String(i).padStart(2,'0'));
+const CATS=['景點','交通','航班','美食','購物','其他'],EMO={景點:'🏛️',交通:'🚆',航班:'✈️',美食:'🍽️',購物:'🛍️',其他:'📌'};
+const CC={景點:['#e0f2fe','#0369a1','#7dd3fc'],交通:['#e0e7ff','#4338ca','#a5b4fc'],航班:['#dbeafe','#1d4ed8','#93c5fd'],美食:['#fef3c7','#b45309','#fcd34d'],購物:['#ffe4e6','#be123c','#fda4af'],其他:['#d1fae5','#047857','#6ee7b7']};
+const REG={south:['#fef3c7','#b45309'],paris:['#ede9fe','#6d28d9'],london:['#ffe4e6','#be123c'],trip:['#e2e8f0','#475569']};
+const INFOC=['#fca5a5','#93c5fd','#fcd34d','#86efac'];
+const INFO=['緊急醫療','台灣駐外館處','當地報警電話','其他'];
+const GRP=[['payer','👤 付款人'],['method','💳 支付方式'],['cat','🏷️ 項目']];
+const LANGS=[['zh-TW','中文'],['en','英文'],['fr','法文'],['it','義大利文']];
+const PH=[["請問洗手間在哪裡？", "Où sont les toilettes, s'il vous plaît ?", "Where is the restroom, please?", "Dov'è il bagno, per favore?"], ["我要點這個", "Je voudrais ceci, s'il vous plaît.", "I'd like this one, please.", "Vorrei questo, per favore."], ["請結帳", "L'addition, s'il vous plaît.", "Can I have the bill, please?", "Il conto, per favore."], ["多少錢？", "Combien ça coûte ?", "How much is it?", "Quanto costa?"], ["可以刷卡嗎？", "Puis-je payer par carte ?", "Can I pay by card?", "Posso pagare con la carta?"], ["請問有英文菜單嗎？", "Avez-vous un menu en anglais ?", "Do you have an English menu?", "Avete un menu in inglese?"], ["我對堅果過敏", "Je suis allergique aux noix.", "I'm allergic to nuts.", "Sono allergico/a alle noci."], ["請幫我叫計程車", "Pouvez-vous appeler un taxi, s'il vous plaît ?", "Could you call a taxi for me, please?", "Può chiamarmi un taxi, per favore?"], ["這班車有到巴黎嗎？", "Ce train va-t-il à Paris ?", "Does this train go to Paris?", "Questo treno va a Parigi?"], ["請說慢一點", "Pouvez-vous parler plus lentement, s'il vous plaît ?", "Could you speak more slowly, please?", "Può parlare più lentamente, per favore?"], ["這裡可以拍照嗎？", "Est-ce qu'on peut prendre des photos ici ?", "Can I take photos here?", "Posso fare foto qui?"], ["我需要幫助", "J'ai besoin d'aide.", "I need help.", "Ho bisogno di aiuto."], ["謝謝", "Merci beaucoup.", "Thank you very much.", "Grazie mille."]];
+const TABS=[['plan','行程','🗓️'],['map','地圖','🗺️'],['exp','記帳','💶'],['bak','備用 / 購物','🌟']];
+const uid=()=>Math.random().toString(36).slice(2,9);
+const city=i=>i<7?'Nice':i<14?'Paris':'London';
+const def=()=>({start:'2027-02-15',rate:{EUR:35,GBP:41},days:Array.from({length:20},(_,i)=>({city:city(i),items:[],exp:[]})),
+ todo:[{id:uid(),text:'申請 ETIAS / 英國 ETA',done:false},{id:uid(),text:'購買旅平險',done:false}],shop:[],backup:[],
+ info:[{id:uid(),cat:'緊急醫療',text:'歐盟通用緊急電話：112'},{id:uid(),cat:'緊急醫療',text:'法國急救 15 ／ 英國 999'}]});
+let init=def();try{const s=JSON.parse(localStorage.getItem('eufr20')||'null');if(s)init=Object.assign(init,s)}catch(e){}
+
+const SD=[
+['Istanbul','航班',['22:00|航班|桃園機場 TPE 出發|Taoyuan International Airport|TPE→IST 飛行 12h50m','05:50|其他|抵達伊斯坦堡 IST 轉機|Istanbul Airport|轉機 3h05m','08:55|航班|IST → 馬賽 MRS|Istanbul Airport|08:55 起飛，10:25 抵達 (3h30m)']],
+['Marseille','南法馬賽',['10:25|航班|降落 馬賽機場 MRS|Marseille Provence Airport|','|交通|馬賽聖夏爾火車站|Gare de Marseille-Saint-Charles|','|景點|馬賽景點：舊港|Vieux-Port Marseille|暫填，請自行調整']],
+['Marseille','南法馬賽、尼斯',['|景點|馬賽景點：守護聖母教堂|Notre-Dame de la Garde Marseille|暫填，請自行調整','|交通|傍晚火車 馬賽 → 尼斯|Gare de Marseille-Saint-Charles|車次待補','|交通|抵達尼斯城站|Gare de Nice-Ville|']],
+['Nice','尼斯嘉年華',['|景點|尼斯嘉年華|Place Masséna Nice|場地與票券請再確認']],
+['Cannes','南法坎城、尼斯',['|景點|坎城 節慶宮|Palais des Festivals et des Congrès Cannes|','|景點|尼斯景點：英國人散步大道|Promenade des Anglais Nice|暫填，請自行調整']],
+['Monaco','南法摩納哥、芒通',['|景點|摩納哥|Monaco-Ville|','|景點|芒通|Menton France|']],
+['Nice','交通日：尼斯 → 巴黎',['11:56|交通|TGV 尼斯城站 → 巴黎里昂站|Gare de Nice-Ville|參考車次 11:56-17:50 (5h54m)、09:58-15:51 (5h53m)','|交通|抵達巴黎里昂站|Gare de Lyon Paris|']],
+['Paris','巴黎：奧賽美術館→杜樂麗花園→羅浮宮→皇家宮殿→香榭麗舍大道、凱旋門',['|景點|奧賽美術館|Musée d\'Orsay Paris|米勒《拾穗》、梵谷《隆河上的星夜》、雷諾瓦《煎餅磨坊的舞會》','|景點|杜樂麗花園|Jardin des Tuileries Paris|','|景點|羅浮宮|Louvre Museum Paris|《勝利女神》《蒙娜麗莎》《米洛的維納斯》《迦納的婚禮》','|景點|皇家宮殿|Palais-Royal Paris|','|景點|香榭麗舍大道、凱旋門|Arc de Triomphe Paris|']],
+['Paris','巴黎：凡爾賽宮→艾菲爾鐵塔→塞納河遊船→特羅卡德羅',['|景點|凡爾賽宮|Palace of Versailles|盡量預約早起第一批入場','|景點|比爾哈凱姆橋 Bir-Hakeim|Pont de Bir-Hakeim Paris|','|景點|艾菲爾鐵塔、戰神廣場|Eiffel Tower Paris|','|景點|塞納河遊船|Bateaux Parisiens Paris|','|景點|夏樂宮廣場、特羅卡德羅花園|Jardins du Trocadéro Paris|看鐵塔夜景']],
+['Paris','聖米歇爾山一日遊',['|景點|聖米歇爾山一日遊|Mont-Saint-Michel|']],
+['Paris','巴黎：聖母院→聖徒禮拜堂→拉丁區→瑪黑區→巴士底市集',['|景點|巴黎聖母院|Notre-Dame de Paris|','|景點|聖徒禮拜堂|Sainte-Chapelle Paris|','|景點|拉丁區（莎士比亞書店）|Shakespeare and Company Paris|','|景點|瑪黑區|Le Marais Paris|','|景點|巴士底市集|Marché Bastille Paris|']],
+['Paris','巴黎：歌劇院→老佛爺→瑪德蓮教堂→蒙馬特→紅磨坊',['|景點|歌劇院|Palais Garnier Paris|','|購物|老佛爺百貨|Galeries Lafayette Haussmann Paris|','|景點|瑪德蓮教堂|Église de la Madeleine Paris|','|景點|蒙馬特巡禮|Sacré-Cœur Montmartre Paris|愛牆、穿牆人、小丘廣場、聖心堂','|景點|紅磨坊 (夜景)|Moulin Rouge Paris|']],
+['Paris','巴黎：機動日＋聖馬丁運河',['|景點|留給前幾天沒逛完的地方|Paris|','|景點|聖馬丁運河|Canal Saint-Martin Paris|']],
+['London','交通日：巴黎 → 倫敦',['14:32|交通|Eurostar 巴黎北站 → 倫敦聖潘克拉斯|Gare du Nord Paris|參考車次 14:32-16:05 (2h33m)、13:32-15:00 (2h28m)','|交通|抵達倫敦聖潘克拉斯車站|London St Pancras International|']],
+['London','倫敦：大英博物館→肯頓市集→柯芬園→國家美術館→音樂劇',['|景點|大英博物館|British Museum London|','|購物|Camden 肯頓市集|Camden Market London|','|景點|Coal Drops Yard|Coal Drops Yard London|','|景點|柯芬園街區|Covent Garden London|','|景點|國家美術館 (特拉法加廣場)|National Gallery London|','|景點|英國首相官邸|10 Downing Street London|','|景點|國王十字站 King\'s Cross|King\'s Cross station London|','|景點|音樂劇|West End London|劇目與場次待補']],
+['London','倫敦：倫敦塔→塔橋→波羅市場→泰晤士河→西敏寺→倫敦眼→碎片塔',['|景點|倫敦塔|Tower of London|','|景點|倫敦塔橋|Tower Bridge London|','|美食|波羅市場|Borough Market London|','|景點|泰晤士河遊船|Thames river cruise London|','|景點|大笨鐘|Big Ben London|','|景點|騎兵衛隊博物館 (可外面看)|Household Cavalry Museum London|','|景點|西敏寺|Westminster Abbey London|','|景點|倫敦眼|London Eye|','|景點|Leake Street Arches 塗鴉街區|Leake Street Arches London|','|景點|碎片塔 (夜景)|The Shard London|']],
+['London','倫敦：溫莎城堡→白金漢宮→皇家馬廄→聖保羅座堂',['|景點|溫莎城堡、溫莎小鎮|Windsor Castle|','|景點|The Long Walk|The Long Walk Windsor|','|景點|白金漢宮|Buckingham Palace London|','|景點|皇家馬廄|Royal Mews London|','|景點|聖保羅座堂|St Paul\'s Cathedral London|傍晚唱詩晚頌 Evensong']],
+['London','倫敦：衛兵交接→自然史博物館→V&A→國王美術館',['|景點|白金漢宮 衛兵交接儀式 (海德公園)|Buckingham Palace London|','|景點|自然史博物館|Natural History Museum London|','|美食|V&A 博物館咖啡廳|Victoria and Albert Museum London|','|景點|國王美術館|The King\'s Gallery London|']],
+['London','飛機',['|航班|飛機 (時間與機場待補)|Heathrow Airport|機場請依實際航班修改']],
+['Taipei','航班回台灣',['|航班|航班回台灣|Taoyuan International Airport|']]];
+const FL=[[1,'TPE 22:00 → IST 05:50 (12h50m)'],[1,'IST 08:55 → MRS 10:25 (3h30m)，轉機 3h05m'],[3,'火車 馬賽聖夏爾 → 尼斯 (傍晚，車次待補)'],[7,'TGV 尼斯城站→巴黎里昂站 11:56-17:50 或 09:58-15:51'],[14,'Eurostar 巴黎北站→倫敦聖潘克拉斯 14:32-16:05 或 13:32-15:00'],[19,'飛機 (時間待補)'],[20,'航班回台灣 (時間待補)']];
+const LD=[['馬賽住宿 (待填)',2,3],['尼斯住宿 (待填)',3,7],['巴黎住宿 (待填)',7,14],['倫敦住宿 (待填)',14,19]];
+const IS=[['備用參考景點','可在這裡記錄備用參考景點，或到各日「備用」分頁新增'],
+['緊急醫療','歐盟通用緊急電話 112 (免費，可叫救護車、警察、消防)'],['緊急醫療','法國：急救 SAMU 15 ／ 消防與救護 18'],['緊急醫療','英國：緊急 999 或 112 ／ 非緊急醫療諮詢 NHS 111'],['緊急醫療','就醫請保留收據與診斷書，回台申請旅平險理賠'],
+['台灣駐外館處','駐法國台北代表處：78 rue de l\'Université, 75007 Paris｜領務組 +33 1 44 39 88 20｜急難救助 +33 6 80 07 49 94 (僅限急難)'],
+['台灣駐外館處','南法 (普羅旺斯-蔚藍海岸) 轄區急難電話：+33 7 61 14 15 20 (外交部網頁所列，出發前請再確認)'],
+['台灣駐外館處','駐英國台北代表處：50 Grosvenor Gardens, London SW1W 0EB (近 Victoria 站)｜總機 +44 20 7881 2650｜急難救助 +44 7768 938 765'],
+['台灣駐外館處','外交部旅外國人急難救助全球免付費專線：00-800-0885-0885 (自國外撥回台灣：+886-800-085-095)'],
+['台灣駐外館處','提醒：台灣在法、英為「代表處」而非大使館。資料取自外交部及各代表處網站，出發前請再核對'],
+['當地報警電話','法國：警察 17 ／ 歐盟通用 112'],['當地報警電話','英國：報警 999 ／ 非緊急報案 101 ／ 112 亦可'],['當地報警電話','土耳其 (轉機)：緊急 112'],['當地報警電話','遺失護照：先向當地警察報案取得報案證明，再聯絡駐外館處']];
+if(!init.v){init.v=1;init.flights=FL.map(([day,text])=>({id:uid(),day,text}));init.lodging=LD.map(([name,from,to])=>({id:uid(),name,addr:'',from,to,note:''}));
+ SD.forEach(([city,title,its],i)=>{const d=init.days[i];if(d&&!d.items.length){d.city=city;d.title=title;d.items=its.map(x=>{const[t,c,pl,q,n]=x.split('|');return{id:uid(),time:t,cat:c,place:pl,q,note:n,lat:null,lng:null}})}});
+ init.info=(init.info||[]).filter(x=>!/^(歐盟通用緊急電話：112|法國急救 15)/.test(x.text)).concat(IS.map(([cat,text])=>({id:uid(),cat,text})))}
+init.flights=init.flights||[];init.lodging=init.lodging||[];
+if((init.v||0)<2){init.v=2;if(init.start==='2026-11-01')init.start='2027-02-15';
+ const isT=x=>/火車|TGV|Eurostar/.test(x.text),all=init.flights||[];init.trans=all.filter(isT);init.flights=all.filter(x=>!isT(x));
+ init.trans.forEach(x=>{if(/Eurostar/.test(x.text)&&!x.note)x.note='時間為當地時間 (英國比法國慢 1 小時)'});
+ init.trans.unshift({id:uid(),day:2,text:'馬賽機場 → 聖夏爾火車站 (交通方式待補)'})}
+init.trans=init.trans||[];
+if((init.v||0)<3){init.v=3;
+ init.info=(init.info||[]).filter(x=>x.cat!=='備用參考景點').map(x=>['交通','住宿'].includes(x.cat)?{...x,cat:'其他'}:x);
+ init.flights.forEach(x=>{if(/TPE.*IST/.test(x.text)){x.from='TPE';x.to='IST';x.dur='12h50m'}else if(/IST.*MRS/.test(x.text)){x.from='IST';x.to='MRS';x.dur='3h30m';x.note=x.note||'轉機 3h05m'}})}
+if((init.v||0)<4){init.v=4;
+ const fill=(x,o)=>{for(const k in o)if(!x[k])x[k]=o[k]};
+ init.flights.forEach(x=>{if(/TPE.*IST/.test(x.text))fill(x,{dep:'22:00',arr:'05:50'});if(/IST.*MRS/.test(x.text))fill(x,{dep:'08:55',arr:'10:25'})});
+ init.trans.forEach(x=>{
+  if(/TGV/.test(x.text)){fill(x,{from:'尼斯城站 Nice-Ville',to:'巴黎里昂站 Gare de Lyon',operator:'SNCF (TGV)',dep:'11:56',arr:'17:50',dur:'5h54m'});if(!/09:58/.test(x.note||''))x.note=((x.note||'')+' 備選 09:58-15:51 (5h53m)').trim()}
+  else if(/Eurostar/.test(x.text)){fill(x,{from:'巴黎北站 Gare du Nord',to:'倫敦聖潘克拉斯 St Pancras',operator:'Eurostar',dep:'14:32',arr:'16:05',dur:'2h33m'});if(!/13:32/.test(x.note||''))x.note=((x.note||'')+' 備選 13:32-15:00 (2h28m)').trim()}
+  else if(x.day==3)fill(x,{from:'馬賽聖夏爾站',to:'尼斯城站',operator:'SNCF'});
+  else if(x.day==2)fill(x,{from:'馬賽機場 MRS',to:'馬賽聖夏爾站'})});
+ init.lodging.forEach(l=>{if(l.phone===undefined)l.phone=''})}
+if((init.v||0)<5){init.v=5;
+ const T5=['出發日','南法-馬賽','南法-馬賽、尼斯','尼斯嘉年華','南法-坎城、尼斯','南法-摩納哥、芒通','交通日：尼斯 → 巴黎','巴黎','巴黎','巴黎-聖米歇爾山','巴黎','巴黎','巴黎','交通日：巴黎 → 倫敦','倫敦','倫敦','倫敦','倫敦','回程日','回程日'];
+ init.days.forEach((d,i)=>d.title=T5[i]);init.lodging.forEach(l=>{if(l.web===undefined)l.web=''})}
+init.days.forEach(d=>{if(d.title)d.title=d.title.trim()});init.myPh=init.myPh||[];init.apiKey=init.apiKey||'';init.legs=init.legs||{};
+ init.opts=init.opts||{payer:['A','B','公款'],method:['現金','信用卡'],cat:['食','門票','交通','購物','其他']};
+init.days.forEach(d=>d.exp.forEach(e=>{if(e.payer&&!init.opts.payer.includes(e.payer))init.opts.payer.push(e.payer)}));
+const WI=c=>c==0?'☀️':c==1?'🌤️':c==2?'⛅':c==3?'☁️':c<50?'🌫️':c<68?'🌧️':c<80?'🌨️':c<83?'🌦️':c<87?'🌨️':'⛈️';
+const WL=c=>c==0?'晴':c<3?'晴時多雲':c==3?'陰':c<50?'霧':c<68?'雨':c<78?'雪':c<83?'陣雨':c<87?'陣雪':'雷雨';
+
+createApp({setup(){
+ const S=reactive(init),view=ref('home'),di=ref(-1),tab=ref('plan'),modal=ref(false),form=reactive({}),drag=ref(null);
+ const f=reactive({todo:'',todosub:'',shop:'',bak:'',bakq:'',info:'',ic:INFO[0],et:'',ea:null,ec:'TWD',ep:'',em:'',ek:'',cv:null,cvc:'EUR'});
+ const wx=reactive({icon:'🌡️',t:'--°C',f:'',d:'載入中…'}),mapMsg=ref(''),rateMsg=ref('');
+ const day=computed(()=>S.days[di.value]||{items:[],exp:[]});
+ watch(S,()=>localStorage.setItem('eufr20',JSON.stringify(S)),{deep:true});
+ const dobj=i=>{const d=new Date(S.start+'T00:00:00');d.setDate(d.getDate()+i);return d};
+ const dstr=(i,s)=>{const d=dobj(i);return s?`${d.getMonth()+1}/${d.getDate()}(${'日一二三四五六'[d.getDay()]})`:`${d.getFullYear()}/${d.getMonth()+1}/${d.getDate()} 週${'日一二三四五六'[d.getDay()]}`};
+ const fmt=n=>Math.round(n||0).toLocaleString();
+ const add=(arr,k)=>{if(!f[k].trim())return;arr.push({id:uid(),text:f[k].trim(),done:false});f[k]=''};
+ const addInfo=()=>{if(f.info.trim()){S.info.push({id:uid(),cat:f.ic,text:f.info.trim()});f.info=''}};
+ const del=(arr,id)=>{const i=arr.findIndex(x=>x.id==id);if(i>-1)arr.splice(i,1)};
+ const openItem=it=>{Object.assign(form,it?{q:'',addr:'',intro:'',hours:'',gmap:'',tnote:'',catx:'',ticket:'',...it}:{id:null,time:'',cat:'景點',place:'',note:'',q:'',addr:'',intro:'',hours:'',gmap:'',tnote:'',catx:'',ticket:''});modal.value=true};
+ const saveItem=()=>{if(!form.place.trim()&&!(form.q||'').trim())return;if(!form.place.trim())form.place=form.q;const o={...form,lat:null,lng:null,miss:0};
+  if(form.id){const i=day.value.items.findIndex(x=>x.id==form.id);if(i>-1&&day.value.items[i].place==form.place&&(day.value.items[i].q||'')==(form.q||'')){o.lat=day.value.items[i].lat;o.lng=day.value.items[i].lng}day.value.items[i]=o}
+  else{o.id=uid();day.value.items.push(o)}
+  day.value.items.sort((a,b)=>(a.time||'99').localeCompare(b.time||'99'));modal.value=false};
+ const mv=(i,d)=>{const a=day.value.items,j=i+d;if(j<0||j>=a.length)return;[a[i],a[j]]=[a[j],a[i]]};
+ const drop=i=>{if(drag.value==null)return;const a=day.value.items,[x]=a.splice(drag.value,1);a.splice(i,0,x);drag.value=null};
+ const toDay=b=>{if(di.value<0)return;day.value.items.push({id:uid(),time:'',cat:'景點',place:b.text,q:b.q||'',addr:b.addr||'',hours:b.hours||'',ticket:b.price||'',intro:b.intro||'',note:[b.note,'(備用景點)'].filter(Boolean).join(' ｜ '),gmap:'',tnote:'',catx:'',lat:null,lng:null});tab.value='plan'};
+ const openB=reactive({}),addBak=()=>{if(!f.bak.trim()&&!f.bakq.trim())return;S.backup.push({id:uid(),text:f.bak.trim()||f.bakq.trim(),q:f.bakq.trim(),city:'',addr:'',hours:'',price:'',intro:'',note:''});f.bak='';f.bakq=''};
+ const setT=(k,v)=>{const p=(form.time||'').split(':');let h=p[0]||'',m=p[1]||'';if(k==0)h=v;else m=v;form.time=(!h&&!m)?'':(h||'00')+':'+(m||'00')};
+ const dayTotal=d=>d.exp.reduce((a,e)=>a+e.amt*(e.cur=='TWD'?1:S.rate[e.cur]),0);
+ const addExp=()=>{if(!f.et.trim()||!f.ea)return;day.value.exp.push({id:uid(),title:f.et.trim(),amt:f.ea,cur:f.ec,payer:f.ep,method:f.em,cat:f.ek});f.et='';f.ea=null};
+ const payers=computed(()=>[...new Set(S.days.flatMap(d=>d.exp.map(e=>e.payer)).filter(Boolean))]);
+ const payerTotal=p=>S.days.reduce((a,d)=>a+d.exp.filter(e=>e.payer==p).reduce((b,e)=>b+e.amt*(e.cur=='TWD'?1:S.rate[e.cur]),0),0);
+ const openD=reactive({});
+ const allOpen=computed(()=>S.days.every((_,i)=>openD[i]));
+ const toggleAll=()=>{const v=!allOpen.value;S.days.forEach((_,i)=>openD[i]=v)};
+ const trips=computed(()=>view.value=='flight'?S.flights:S.trans);
+ const editT=reactive({});
+ const addTrip=()=>{const x={id:uid(),day:1,text:'',ref:'',note:'',airline:'',no:'',from:'',to:'',dur:'',tfrom:'',tto:'',dep:'',arr:'',operator:'',cost:''};trips.value.push(x);editT[x.id]=true};
+ const dd=n=>n>=1&&n<=20?dstr(n-1,1):'';
+ const dayTrans=computed(()=>S.trans.filter(x=>x.day==di.value+1));
+ const T=reactive({from:'zh-TW',to:'fr',text:'',out:'',busy:false,msg:''}),showT=ref(''),toast=ref('');
+ const copy=async t=>{try{await navigator.clipboard.writeText(t)}catch(e){const a=document.createElement('textarea');a.value=t;document.body.appendChild(a);a.select();document.execCommand('copy');a.remove()}toast.value='已複製';setTimeout(()=>toast.value='',1500)};
+ const swap=()=>{[T.from,T.to]=[T.to,T.from];T.text=T.out;T.out=''};
+ const doTr=async()=>{if(!T.text.trim())return;T.busy=true;T.msg='';try{const j=await (await fetch('https://api.mymemory.translated.net/get?q='+encodeURIComponent(T.text.slice(0,450))+'&langpair='+T.from+'|'+T.to)).json();const d=document.createElement('textarea');d.innerHTML=j.responseData.translatedText;T.out=d.value;T.msg='翻譯來源 MyMemory (需連網，單次上限約 450 字，僅供參考)'}catch(e){T.msg='翻譯失敗，請確認網路'}T.busy=false};
+ const speak=(t,l)=>{try{const u=new SpeechSynthesisUtterance(t);u.lang={fr:'fr-FR',en:'en-GB','zh-TW':'zh-TW',it:'it-IT'}[l];speechSynthesis.cancel();speechSynthesis.speak(u)}catch(e){}};
+ const ph=reactive({zh:'',en:'',fr:'',it:'',busy:false});
+ const mt=async(t,l)=>{try{const j=await (await fetch('https://api.mymemory.translated.net/get?q='+encodeURIComponent(t)+'&langpair=zh-TW|'+l)).json();const d=document.createElement('textarea');d.innerHTML=j.responseData.translatedText;return d.value}catch(e){return ''}};
+ const addMyPh=async()=>{const zh=ph.zh.trim();if(!zh)return;ph.busy=true;const o={id:uid(),zh};for(const l of ['en','fr','it'])o[l]=ph[l].trim()||await mt(zh,l);S.myPh.push(o);ph.zh=ph.en=ph.fr=ph.it='';ph.busy=false;if(!o.en||!o.fr||!o.it)T.msg='部分語言翻譯失敗 (需連網)，可刪除後手動填寫'};
+ const usePh=p=>{const i={fr:1,en:2,it:3}[T.to];if(T.from=='zh-TW'&&i){T.text=p[0];T.out=p[i];T.msg=''}else T.msg='常用句需設定為「中文 → 英文 / 法文 / 義大利文」'};
+ const addOpt=k=>{const v=(prompt('新增選項名稱')||'').trim();if(v&&!S.opts[k].includes(v))S.opts[k].push(v)};
+ const delOpt=(k,m)=>{const v=f[m];if(v&&confirm(`移除選項「${v}」？(已記的帳不受影響)`)){S.opts[k]=S.opts[k].filter(x=>x!==v);f[m]=''}};
+ const statTotal=(k,v)=>S.days.reduce((a,d)=>a+d.exp.filter(e=>e[k]==v).reduce((b,e)=>b+e.amt*(e.cur=='TWD'?1:S.rate[e.cur]),0),0);
+ const vals=k=>[...new Set([...S.opts[k],...S.days.flatMap(d=>d.exp.map(e=>e[k]))].filter(Boolean))].filter(v=>statTotal(k,v)>0);
+ const tf=e=>{let v=e.target.value.replace(/[^\d]/g,'').slice(0,4);if(v.length>2)v=v.slice(0,2)+':'+v.slice(2);e.target.value=v;return v};
+ const webUrl=u=>/^https?:/i.test(u)?u:'https://'+u;
+ const todoSorted=computed(()=>[...S.todo.filter(x=>!x.done),...S.todo.filter(x=>x.done)]);
+ const addTodo=()=>{if(!f.todo.trim())return;S.todo.unshift({id:uid(),text:f.todo.trim(),sub:f.todosub.trim(),done:false});f.todo='';f.todosub=''};
+ const cc=c=>CC[c]||CC['其他'];
+ const rg=c=>REG[/paris/i.test(c||'')?'paris':/london/i.test(c||'')?'london':/istanbul|taipei/i.test(c||'')?'trip':'south'];
+ const qf=it=>it.gmap||it.q||it.addr||it.place;const qs=it=>{const g=qf(it);return /^https?:/.test(g)?(it.q||it.addr||it.place):g};
+ const dayFlights=computed(()=>S.flights.filter(x=>x.day==di.value+1));
+ const dayLodging=computed(()=>S.lodging.find(l=>di.value+1>=l.from&&di.value+1<l.to));
+ const nav=p=>/^https?:/.test(p)?p:'https://www.google.com/maps/search/?api=1&query='+encodeURIComponent(p);
+ const routeUrl=()=>{const a=day.value.items.map(x=>qs(x));if(!a.length)return'https://www.google.com/maps';
+  return'https://www.google.com/maps/dir/?api=1&destination='+encodeURIComponent(a[a.length-1])+(a.length>1?'&origin='+encodeURIComponent(a[0]):'')+(a.length>2?'&waypoints='+encodeURIComponent(a.slice(1,-1).join('|')):'')};
+
+ // weather (Open-Meteo)
+ const loadWx=async()=>{if(di.value<0)return;wx.icon='🌡️';wx.t='--°C';wx.f='';wx.d='載入中…';
+  try{const c=day.value.city;const g=await (await fetch('https://geocoding-api.open-meteo.com/v1/search?count=1&name='+encodeURIComponent(c))).json();const r=g.results[0];
+   const D0=dobj(di.value),ds=`${D0.getFullYear()}-${String(D0.getMonth()+1).padStart(2,'0')}-${String(D0.getDate()).padStart(2,'0')}`;
+   const base=`https://api.open-meteo.com/v1/forecast?latitude=${r.latitude}&longitude=${r.longitude}&timezone=auto&current=temperature_2m,apparent_temperature,weathercode`;
+   let j;try{j=await (await fetch(base+`&daily=weathercode,temperature_2m_max,temperature_2m_min,apparent_temperature_max,apparent_temperature_min&start_date=${ds}&end_date=${ds}`)).json()}catch(e){}
+   if(j&&j.daily&&j.daily.weathercode){const q=j.daily,R=x=>Math.round(x);wx.icon=WI(q.weathercode[0]);wx.t=R(q.temperature_2m_min[0])+'~'+R(q.temperature_2m_max[0])+'°C';wx.f='體感 '+R(q.apparent_temperature_min[0])+'~'+R(q.apparent_temperature_max[0])+'°C';wx.d=r.name+' · '+WL(q.weathercode[0])+' (預報)';return}
+   j=await (await fetch(base)).json();const k=j.current;wx.icon=WI(k.weathercode);wx.t=Math.round(k.temperature_2m)+'°C';wx.f='體感 '+Math.round(k.apparent_temperature)+'°C';wx.d=r.name+' · '+WL(k.weathercode)+' (目前；日期超出預報範圍)'}
+  catch(e){wx.d='無法取得天氣 (需連網)'}};
+ watch(()=>[di.value,S.start,day.value.city],loadWx);
+
+ // rate
+ onMounted(async()=>{loadWx();try{const j=await (await fetch('https://open.er-api.com/v6/latest/TWD')).json();
+  S.rate.EUR=+(1/j.rates.EUR).toFixed(2);S.rate.GBP=+(1/j.rates.GBP).toFixed(2);rateMsg.value='(已自動更新)'}catch(e){rateMsg.value='(離線，請手動輸入)'}});
+
+ // map: Leaflet + Google tiles
+ let map=null,me=null;
+ const geo=async(it)=>{if(it.lat)return;try{const j=await (await fetch('https://nominatim.openstreetmap.org/search?format=json&limit=1&q='+encodeURIComponent(it.q||it.place))).json();
+  if(j[0]){it.lat=+j[0].lat;it.lng=+j[0].lon}else it.miss=1}catch(e){}};
+ const locate=()=>{if(!navigator.geolocation){mapMsg.value='瀏覽器不支援定位';return}
+  navigator.geolocation.getCurrentPosition(p=>{const ll=[p.coords.latitude,p.coords.longitude];if(me)me.remove();
+   me=L.circleMarker(ll,{radius:9,color:'#fff',weight:3,fillColor:'#2563eb',fillOpacity:1}).addTo(map).bindPopup('我的位置');map.setView(ll,14)},()=>mapMsg.value='無法取得定位，請允許位置權限',{enableHighAccuracy:true})};
+ const draw=async()=>{await nextTick();const el=document.getElementById('map');if(!el)return;if(map){map.remove();map=null}
+  map=L.map(el).setView([48.85,2.35],5);
+  L.tileLayer('https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}',{maxZoom:20,attribution:'© Google'}).addTo(map);
+  mapMsg.value='正在定位今日地點…';const pts=[];
+  for(const it of day.value.items){await geo(it);if(!map)return;
+   if(it.lat){const m=L.marker([it.lat,it.lng]).addTo(map).bindPopup(`${EMO[it.cat]} ${it.time||''}<br><b>${it.place}</b><br><a target="_blank" href="${nav(qf(it))}">🗺️ Google Map</a>`);pts.push([it.lat,it.lng])}
+   await new Promise(r=>setTimeout(r,day.value.items.length>1&&!it.lat?1100:0))}
+  if(pts.length){L.polyline(pts,{color:'#0ea5e9',weight:3,dashArray:'6'}).addTo(map);map.fitBounds(pts,{padding:[30,30],maxZoom:15})}
+  mapMsg.value=pts.length?`已釘選 ${pts.length} 個地點 ・ 點圖釘可導航`:'今天沒有可定位的地點，先到「行程」新增';locate()};
+ watch(()=>[tab.value,di.value,view.value],()=>{if(view.value=='day'&&di.value>=0&&tab.value=='map')draw()});
+ watch(()=>[view.value,di.value],()=>{tab.value=tab.value});
+
+ // ---- flights / trains ----
+ const isoDate=n=>{const d=dobj(n-1);return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`};
+ const cleanNo=x=>(x.no||'').replace(/\s/g,'').toUpperCase();
+ const fltUrl=x=>'https://www.flightaware.com/live/flight/'+encodeURIComponent(cleanNo(x));
+ const lookup=async(x,manual)=>{const no=cleanNo(x);if(!no||!(x.day>=1)){x.msg='請先填航班號與第幾天';return}
+  if(!S.apiKey){x.msg='未設定金鑰';if(manual)window.open(fltUrl(x),'_blank');return}
+  x.msg='查詢中…';try{const r=await fetch(`https://aerodatabox.p.rapidapi.com/flights/number/${no}/${isoDate(x.day)}`,{headers:{'X-RapidAPI-Key':S.apiKey,'X-RapidAPI-Host':'aerodatabox.p.rapidapi.com'}});
+   if(!r.ok)throw new Error(r.status);const j=await r.json(),f=(Array.isArray(j)?j:[j])[0];if(!f)throw new Error('none');
+   const dp=f.departure||{},ar=f.arrival||{},tm=o=>o&&o.scheduledTime&&o.scheduledTime.local?o.scheduledTime.local.slice(11,16):'',ut=o=>o&&o.scheduledTime&&o.scheduledTime.utc?Date.parse(o.scheduledTime.utc.replace(' ','T')):NaN;
+   if(dp.airport&&dp.airport.iata)x.from=dp.airport.iata;if(ar.airport&&ar.airport.iata)x.to=ar.airport.iata;
+   if(dp.terminal)x.tfrom=dp.terminal;if(ar.terminal)x.tto=ar.terminal;if(f.airline&&f.airline.name)x.airline=f.airline.name;
+   x.dep=tm(dp)||x.dep;x.arr=tm(ar)||x.arr;const m=Math.round((ut(ar)-ut(dp))/60000);if(m>0)x.dur=Math.floor(m/60)+'h'+String(m%60).padStart(2,'0')+'m';
+   x.msg='已更新 ✔'}catch(e){x.msg='查詢失敗 ('+e.message+')，請檢查金鑰、航班號與日期'}};
+ let atimer;watch(()=>S.apiKey+S.start+S.flights.map(x=>x.no+'|'+x.day).join(),()=>{clearTimeout(atimer);atimer=setTimeout(()=>{if(!S.apiKey)return;S.flights.forEach(x=>{const sg=cleanNo(x)+'|'+x.day+'|'+S.start;if(cleanNo(x)&&x.day>=1&&x.sig!==sg){x.sig=sg;lookup(x)}})},1200)},{immediate:true});
+ const calc=x=>{if(!x.dep||!x.arr)return '';let m=+x.arr.slice(0,2)*60+ +x.arr.slice(3)-(+x.dep.slice(0,2)*60+ +x.dep.slice(3));if(m<0)m+=1440;return Math.floor(m/60)+'h'+String(m%60).padStart(2,'0')+'m'};
+ const trainUrl=x=>'https://www.google.com/search?q='+encodeURIComponent([x.operator,x.no,x.from,x.to,'live train status'].filter(Boolean).join(' '));
+ const opUrl=x=>/eurostar/i.test(x.operator||'')?'https://www.eurostar.com/':/sncf|tgv|ouigo/i.test(x.operator||'')?'https://www.sncf-connect.com/':'https://www.thetrainline.com/';
+ const selOpt=(k,m)=>{const v=f[m];if(v=='__add'){f[m]='';const n=(prompt('新增選項名稱')||'').trim();if(n){if(!S.opts[k].includes(n))S.opts[k].push(n);f[m]=n}}else if(v=='__del'){f[m]='';const n=(prompt('要移除哪個選項？\n'+S.opts[k].join('、'))||'').trim();if(S.opts[k].includes(n)&&confirm(`移除「${n}」？(已記的帳不受影響)`))S.opts[k]=S.opts[k].filter(x=>x!==n)}};
+ // ---- travel time between stops ----
+ const hav=(a,b)=>{const r=x=>x*Math.PI/180,dl=r(b.lat-a.lat),dg=r(b.lng-a.lng),h=Math.sin(dl/2)**2+Math.cos(r(a.lat))*Math.cos(r(b.lat))*Math.sin(dg/2)**2;return 12742*Math.asin(Math.sqrt(h))};
+ const lk=(a,b)=>`${a.lat.toFixed(4)},${a.lng.toFixed(4)}>${b.lat.toFixed(4)},${b.lng.toFixed(4)}`;
+ const fm=m=>m<60?m+'分':Math.floor(m/60)+'時'+(m%60?m%60+'分':'');
+ const leg=i=>{const a=day.value.items[i],b=day.value.items[i+1];if(!a||!b||!a.lat||!b.lat)return null;const km=hav(a,b);if(km>60)return{far:true,km:Math.round(km)};const c=S.legs[lk(a,b)];if(!c)return null;
+  const tr=km<0.6?c.walk:Math.round(8+km*1.3/22*60);return{walk:fm(c.walk),drive:fm(c.drive),transit:fm(tr),best:c.walk<=15?'walk':'transit'}};
+ const dirUrl=i=>{const a=day.value.items[i],b=day.value.items[i+1];return 'https://www.google.com/maps/dir/?api=1&origin='+encodeURIComponent(qs(a))+'&destination='+encodeURIComponent(qs(b))+'&travelmode=transit'};
+ const legBusy=ref(false);let running=false,again=false,lt;
+ const ensureLegs=async()=>{if(running){again=true;return}running=true;legBusy.value=true;
+  try{const its=day.value.items;
+   for(const it of its){if(!it.lat&&!it.miss){await geo(it);await new Promise(r=>setTimeout(r,1100))}}
+   for(let i=0;i<its.length-1;i++){const a=its[i],b=its[i+1];if(!a.lat||!b.lat)continue;const k=lk(a,b),km=hav(a,b);if(S.legs[k]||km>60)continue;
+    const est={walk:Math.round(km*1.3/5*60),drive:Math.round(km*1.3/30*60)+2},q=`${a.lng},${a.lat};${b.lng},${b.lat}?overview=false`;
+    const get=async u=>{try{const j=await (await fetch(u+q)).json();return Math.max(1,Math.round(j.routes[0].duration/60))}catch(e){return null}};
+    const [w,d]=await Promise.all([get('https://routing.openstreetmap.de/routed-foot/route/v1/driving/'),get('https://routing.openstreetmap.de/routed-car/route/v1/driving/')]);
+    S.legs[k]={walk:w==null?est.walk:w,drive:d==null?est.drive:d}}}catch(e){}
+  running=false;legBusy.value=false;if(again){again=false;ensureLegs()}};
+ watch(()=>view.value+'|'+di.value+'|'+day.value.items.map(x=>x.id+x.place+(x.addr||'')+(x.q||'')).join(','),()=>{if(view.value=='day'&&di.value>=0){clearTimeout(lt);lt=setTimeout(ensureLegs,700)}},{immediate:true});
+ return{S,view,di,tab,modal,form,drag,f,wx,mapMsg,rateMsg,day,dstr,fmt,add,addInfo,del,openItem,saveItem,mv,drop,toDay,dayTotal,addExp,ph,addMyPh,editT,cc,rg,INFOC,openB,addBak,setT,HRS,MINS,tf,webUrl,todoSorted,addTodo,qs,leg,dirUrl,legBusy,lookup,fltUrl,calc,trainUrl,opUrl,selOpt,T,showT,toast,copy,swap,doTr,speak,usePh,addOpt,delOpt,statTotal,vals,GRP,LANGS,PH,openD,allOpen,toggleAll,trips,addTrip,dd,dayTrans,qf,dayFlights,dayLodging,uid,payers,payerTotal,nav,routeUrl,locate,CATS,EMO,INFO,TABS}
+}}).mount('#app');
+</script></body></html>
